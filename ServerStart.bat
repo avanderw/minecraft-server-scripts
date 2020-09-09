@@ -184,9 +184,13 @@ ECHO. 1>>  "%~dp0logs\serverstart.log" 2>&1
 	SET MC_SERVER_ERROR_REASON=Settings.cfg_Error:DEFAULT_WORLD_TYPE
 	GOTO ERROR
 	)	
+>nul %MC_SYS32%\FIND.EXE /I "JAVA_PATH=" "%~dp0settings.cfg" || (
+	SET MC_SERVER_ERROR_REASON=Settings.cfg_Error:JAVA_PATH
+	GOTO ERROR
+	)
 
 REM  LOAD Settings from config
-ECHO INFO: Loading variables from settings.cfg 1>>  "%~dp0logs\serverstart.log" 2>&1 
+ECHO INFO: Loading variables from settings.cfg 1>>  "%~dp0logs\serverstart.log" 2>&1
 for /F "delims=; tokens=1 eol=;" %%A in (settings.cfg) DO (
 	REM Only process the line if it contains an "equals" sign
 	ECHO.%%A | findstr /C:"=">nul && (
@@ -196,7 +200,7 @@ for /F "delims=; tokens=1 eol=;" %%A in (settings.cfg) DO (
 	)
 )
 	REM Old way to parse settings--> broke if args had an "equals" (=) character
-	REM for /f "delims==; tokens=1,2 eol=;" %%G in (settings.cfg) do set %%G=%%H 
+	REM for /f "delims==; tokens=1,2 eol=;" %%G in (settings.cfg) do set %%G=%%H
 
 REM Define Xms (min heap) as Floor(MAX_RAM / 2)
 SET MC_SERVER_TMP_FLAG=
@@ -219,6 +223,7 @@ SET MC_SERVER_SPONGE=0
 SET MC_SERVER_HIGH_PRIORITY=0
 SET MC_SERVER_PACKNAME=PLACEHOLDER
 SET MC_SERVER_WORLDTYPE=BIOMESOP
+SET MC_SERVER_JAVA_PATH=C:\Program Files\ojdkbuild\java-1.8.0-openjdk-1.8.0.262-1\bin
 
 REM Re-map imported vars (from settings.cfg) into script-standard variables
 SET MC_SERVER_MAX_RAM=%MAX_RAM%
@@ -235,6 +240,7 @@ SET MC_SERVER_SPONGE=%USE_SPONGE%
 SET MC_SERVER_HIGH_PRIORITY=%HIGH_CPU_PRIORITY%
 SET MC_SERVER_PACKNAME=%MODPACK_NAME%
 SET MC_SERVER_WORLDTYPE=%DEFAULT_WORLD_TYPE%
+SET MC_SERVER_JAVA_PATH=%JAVA_PATH%
 
 REM Cleanup imported vars after being remapped
 SET MAX_RAM=
@@ -251,6 +257,7 @@ SET USE_SPONGE=
 SET HIGH_CPU_PRIORITY=
 SET MODPACK_NAME=
 SET MC_SERVER_TMP_FLAG=
+SET JAVA_PATH=
 
 REM Get forge shorthand version number
 SET MC_SERVER_FORGESHORT=%MC_SERVER_FORGEVER:~-4%
@@ -298,6 +305,7 @@ ECHO DEBUG: MC_SERVER_TMP_FLAG=%MC_SERVER_TMP_FLAG% 1>>  "%~dp0logs\serverstart.
 ECHO DEBUG: MC_SERVER_CRASH_COUNTER=%MC_SERVER_CRASH_COUNTER% 1>>  "%~dp0logs\serverstart.log" 2>&1
 ECHO DEBUG: MC_SERVER_CRASH_YYYYMMDD=%MC_SERVER_CRASH_YYYYMMDD% 1>>  "%~dp0logs\serverstart.log" 2>&1
 ECHO DEBUG: MC_SERVER_CRASH_HHMMSS=%MC_SERVER_CRASH_HHMMSS% 1>>  "%~dp0logs\serverstart.log" 2>&1
+ECHO DEBUG: MC_SERVER_JAVA_PATH=%MC_SERVER_JAVA_PATH% 1>>  "%~dp0logs\serverstart.log" 2>&1
 ECHO DEBUG: Current directory file listing: 1>>  "%~dp0logs\serverstart.log" 2>&1
 DIR 1>>  "%~dp0logs\serverstart.log" 2>&1
 
@@ -306,10 +314,10 @@ REM reg query "HKLM\System\CurrentControlSet\Control\Session Manager\Environment
 
 :CHECKJAVA
 ECHO INFO: Checking java installation...
-ECHO DEBUG: JAVA version output (java -d64 -version): 1>>  "%~dp0logs\serverstart.log" 2>&1
-java -d64 -version || GOTO JAVAERROR 1>>  "%~dp0logs\serverstart.log" 2>&1
+ECHO DEBUG: JAVA version output ("%MC_SERVER_JAVA_PATH%\java" -d64 -version): 1>>  "%~dp0logs\serverstart.log" 2>&1
+"%MC_SERVER_JAVA_PATH%\java" -d64 -version || GOTO JAVAERROR 1>>  "%~dp0logs\serverstart.log" 2>&1
 
-java -d64 -version 2>&1 | %MC_SYS32%\FIND.EXE "1.8"  1>>  "%~dp0logs\serverstart.log" 2>&1
+"%MC_SERVER_JAVA_PATH%\java" -d64 -version 2>&1 | %MC_SYS32%\FIND.EXE "1.8"  1>>  "%~dp0logs\serverstart.log" 2>&1
 IF %ERRORLEVEL% EQU 0 (
 	ECHO INFO: Found 64-bit Java 1.8 1>> "%~dp0logs\serverstart.log" 2>&1
 	ECHO ...64-bit Java 1.8 found! 1>> "%~dp0logs\serverstart.log" 2>&1
@@ -330,7 +338,7 @@ ECHO ERROR: Could not find 64-bit Java 1.8 installed or in PATH 1>> "%~dp0logs\s
 SET MC_SERVER_ERROR_REASON="JavaVersionOrPathError"
 CLS
 ECHO.
-ECHO ERROR: Could not find valid java version installed. 
+ECHO ERROR: Could not find valid java version installed.
 >nul TIMEOUT 1
 ECHO 64-bit Java ver 1.8+ is highly recomended. Check here for latest downloads:
 ECHO https://java.com/en/download/manual.jsp
@@ -515,7 +523,7 @@ REM	IF NOT EXIST "%~dp0*sponge*bootstrap*.jar" (
 REM		ECHO SpongeBootstrap loader not found...
 REM		ECHO INFO: SpongeForge Bootstrap loader not found 1>>  "%~dp0logs\serverstart.log" 2>&1
 REM		GOTO DOWNLOADSPONGE
-REM	)	
+REM	)
 )
 
 REM set absolute paths for binary JARs
@@ -536,7 +544,7 @@ rem ATTRIB -R "%MC_SERVER_SPONGE_BOOT%"  1>> "%~dp0logs\serverstart.log" 2>&1 ||
 ATTRIB -R "%MC_SERVER_FORGE_JAR%"  1>> "%~dp0logs\serverstart.log" 2>&1 || ECHO INFO: No Forge Jar present to UN-read-only 1>> "%~dp0logs\serverstart.log" 2>&1
 
 :STARTSERVER
-CLS 
+CLS
 IF /i "%1"=="install" (GOTO INSTALLCOMPLETE)
 TITLE %MC_SERVER_PACKNAME% Server Running
 ECHO.
@@ -547,24 +555,24 @@ COLOR 07
 
 REM Batch will wait here indefinitely while MC server is running
 IF %MC_SERVER_SPONGE% EQU 1 (
-	ECHO DEBUG: Attempting to execute [ java %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_SPONGE_BOOT%" nogui ]
-	ECHO DEBUG: Attempting to execute [ java %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_SPONGE_BOOT%" nogui ] 1>> "%~dp0logs\serverstart.log" 2>&1
-	COLOR 
+	ECHO DEBUG: Attempting to execute [ "%MC_SERVER_JAVA_PATH%\java" %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_SPONGE_BOOT%" nogui ]
+	ECHO DEBUG: Attempting to execute [ "%MC_SERVER_JAVA_PATH%\java" %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_SPONGE_BOOT%" nogui ] 1>> "%~dp0logs\serverstart.log" 2>&1
+	COLOR
 	IF %MC_SERVER_HIGH_PRIORITY% EQU 1 (
-		START /B /I /WAIT /HIGH java %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_SPONGE_BOOT%" nogui
+		START /B /I /WAIT /HIGH "%MC_SERVER_JAVA_PATH%\java" %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_SPONGE_BOOT%" nogui
 	) ELSE (
-		java %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_SPONGE_BOOT%" nogui
+		"%MC_SERVER_JAVA_PATH%\java" %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_SPONGE_BOOT%" nogui
 	)
 ) ELSE (
 	ECHO DEBUG: Disabling any spongeforge jar in \mods\ because USE_SPONGE is disabled in settings.cfg 1>> "%~dp0logs\serverstart.log" 2>&1
 	(FOR /f "tokens=* delims=*" %%x in ('dir "%~dp0mods\*spongeforge*.jar" /B /O:-D') DO MOVE /Y "%~dp0mods\%%x" "%%x.disabled") 1>> "%~dp0logs\serverstart.log" 2>&1
-	ECHO DEBUG: Attempting to execute [ java %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_FORGE_JAR%" nogui ]
-	ECHO DEBUG: Attempting to execute [ java %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_FORGE_JAR%" nogui ] 1>> "%~dp0logs\serverstart.log" 2>&1
-	COLOR 
+	ECHO DEBUG: Attempting to execute [ "%MC_SERVER_JAVA_PATH%\java" %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_FORGE_JAR%" nogui ]
+	ECHO DEBUG: Attempting to execute [ "%MC_SERVER_JAVA_PATH%\java" %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_FORGE_JAR%" nogui ] 1>> "%~dp0logs\serverstart.log" 2>&1
+	COLOR
 	IF %MC_SERVER_HIGH_PRIORITY% EQU 1 (
-		START /B /I /WAIT /HIGH java %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_FORGE_JAR%" nogui
+		START /B /I /WAIT /HIGH "%MC_SERVER_JAVA_PATH%\java" %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_FORGE_JAR%" nogui
 	) ELSE (
-		java %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_FORGE_JAR%" nogui
+		"%MC_SERVER_JAVA_PATH%\java" %MC_SERVER_JVM_ARGS% -jar "%~dp0%MC_SERVER_FORGE_JAR%" nogui
 	)
 )
 
@@ -632,7 +640,7 @@ ECHO Downloading FORGE (step 1 of 2). This can take several minutes, please be p
 
 REM Check if direct forge URL is specified in config
 IF NOT %MC_SERVER_FORGEURL%==DISABLE (
-	ECHO Attempting to download "%MC_SERVER_FORGEURL%... this can take a moment, please wait." 
+	ECHO Attempting to download "%MC_SERVER_FORGEURL%... this can take a moment, please wait."
 	GOTO DOWNLOADINSTALLER
 )
 
@@ -664,7 +672,7 @@ REM 		SET MC_SERVER_TMP_FLAG=1
 REM 		DEL /F /Q "%~dp0*forge-index.html"  1>> "%~dp0logs\serverstart.log" 2>&1 || ECHO INFO: No forge-index to delete 1>>  "%~dp0logs\serverstart.log" 2>&1
 REM 		GOTO FETCHHTML
 REM 	) ELSE (
-REM 		ECHO HTML Download failed a second time... stopping. 
+REM 		ECHO HTML Download failed a second time... stopping.
 REM 		ECHO ERROR: HTML Download failed a second time... stopping. 1>>  "%~dp0logs\serverstart.log" 2>&1
 REM 		SET MC_SERVER_ERROR_REASON=ForgeDownloadURLNotFound
 REM 		GOTO ERROR
@@ -684,7 +692,7 @@ IF "%MC_SERVER_FORGEURL%"=="%MC_SERVER_FORGEURL:installer.jar=%" (
 		SET MC_SERVER_ERROR_REASON=ForgeDownloadURLNotFound
 		GOTO ERROR
 	)
-) 
+)
 
 ECHO Downloading FORGE (step 2 of 2). This can take several minutes, please be patient...
 SET MC_SERVER_TMP_FLAG=0
@@ -697,12 +705,12 @@ ECHO DEBUG: Attempting to download "%MC_SERVER_FORGEURL%" 1>> "%~dp0logs\servers
 REM Check that temp-download installer was downloaded
 IF NOT EXIST "%~dp0tmp-forgeinstaller.jar" (
 IF "%MC_SERVER_TMP_FLAG%"=="0" (
-		ECHO Something wrong with download 2 of 2 - FORGE installer, trying again... 
+		ECHO Something wrong with download 2 of 2 - FORGE installer, trying again...
 		ECHO Something wrong with download 2 of 2 - FORGE installer, trying again...  1>>  "%~dp0logs\serverstart.log" 2>&1
 		SET MC_SERVER_TMP_FLAG=1
 		GOTO DOWNLOADINSTALLER
 	) ELSE (
-		ECHO FORGE Installer download failed a second time... stopping. 
+		ECHO FORGE Installer download failed a second time... stopping.
 		ECHO ERROR: FORGE Installer download failed a second time... stopping. 1>>  "%~dp0logs\serverstart.log" 2>&1
 		SET MC_SERVER_ERROR_REASON=ForgeInstallerDownloadFailed
 		GOTO ERROR
@@ -734,11 +742,11 @@ IF NOT EXIST "%~dp0eula.txt" (
 	ECHO INFO: eula.txt not found... populating default
 	ECHO eula=false>>"%~dp0eula.txt"
 	)
-	
+
 ECHO.
 ECHO Installing Forge now, please wait...
 ECHO INFO: Starting Forge install now, details below: 1>>  "%~dp0logs\serverstart.log" 2>&1
-java -jar "%~dp0forge-%MC_SERVER_MCVER%-%MC_SERVER_FORGEVER%-installer.jar" --installServer 1>>  "%~dp0logs\serverstart.log" 2>&1
+"%MC_SERVER_JAVA_PATH%\java" -jar "%~dp0forge-%MC_SERVER_MCVER%-%MC_SERVER_FORGEVER%-installer.jar" --installServer 1>>  "%~dp0logs\serverstart.log" 2>&1
 
 REM TODO: CHECKS TO VALIDATE SUCCESSFUL INSTALL
 
@@ -761,7 +769,7 @@ ECHO.
 >nul TIMEOUT 3
 IF /i "%1"=="install" (
 	ECHO "install" parameter was passed to script now exiting without starting the server...
-	ECHO You can use this same script without the "install" parameter to run the server files or 
+	ECHO You can use this same script without the "install" parameter to run the server files or
 	ECHO by manually starting the forge JAR with Java or uploading to your hosting service
 	ECHO WARN: "install" paremeter passed to script, exiting after install and NOT starting server 1>>  "%~dp0logs\serverstart.log" 2>&1
 	ECHO.
@@ -780,7 +788,7 @@ REM ---Rename any sponge*bootstrap*.jar to .jar.disabled
 REM (FOR /f "tokens=* delims=*" %%x in ('dir "%~dp0*sponge*bootstrap*.jar" /B /O:-D') DO MOVE /Y "%~dp0%%x" "%%x.disabled") 1>> "%~dp0logs\serverstart.log" 2>&1
 REM ---Download spongeforge index to parse for jar download
 REM bitsadmin /rawreturn /nowrap /transfer dlspongehtml /download /priority FOREGROUND "http://files.minecraftforge.net/maven/org/spongepowered/spongeforge/index_%MC_SERVER_MCVER%.html" "%~dp0spongeforge-%MC_SERVER_MCVER%.html"  1>> "%~dp0logs\serverstart.log" 2>&1
-REM ---Download sponge bootstrap html to parse for jar download 
+REM ---Download sponge bootstrap html to parse for jar download
 REM bitsadmin /rawreturn /nowrap /transfer dlspongebootstrap /download /priority FOREGROUND "https://api.github.com/repos/simon816/spongebootstrap/releases/latest" "%~dp0spongebootstrap.html"  1>> "%~dp0logs\serverstart.log" 2>&1
 REM ---Find latest bootstrap download and save to var
 REM FOR /f tokens^=* delims^=^" %%F in ('findstr /ir "https:\/\/github.*releases.*Bootstrap.*\.jar" "%~dp0spongebootstrap.html"') DO (
@@ -811,11 +819,11 @@ ECHO **** PLEASE NOTE ****
 ECHO YOU MAY NOT RECIEVE SUPPORT from modpack devs if you use Sponge
 ECHO Use at your own risk OR DISABLE SPONGE in settings.cfg
 ECHO.
-TIMEOUT 1 >nul 
+TIMEOUT 1 >nul
 COLOR 4f
-TIMEOUT 1 >nul 
+TIMEOUT 1 >nul
 COLOR cf
-TIMEOUT 1 >nul 
+TIMEOUT 1 >nul
 COLOR 4f
 TIMEOUT 1 >nul
 COLOR cf
@@ -832,11 +840,11 @@ ECHO **** ERROR ****
 ECHO There was an Error, Code: "%MC_SERVER_ERROR_REASON%"
 ECHO ERROR: Error flagged, reason is: "%MC_SERVER_ERROR_REASON%" 1>>  "%~dp0logs\serverstart.log" 2>&1
 ECHO.
-TIMEOUT 1 >nul 
+TIMEOUT 1 >nul
 COLOR 4f
-TIMEOUT 1 >nul 
+TIMEOUT 1 >nul
 COLOR cf
-TIMEOUT 1 >nul 
+TIMEOUT 1 >nul
 COLOR 4f
 TIMEOUT 1 >nul
 COLOR cf
@@ -883,7 +891,7 @@ IF %MC_SERVER_TMP_FLAG% GTR 0 (
 REM Arithmetic to check SECONDS since last crash
 SET /a MC_SERVER_TMP_FLAG="%time:~0,2%%time:~3,2%%time:~6,2%-%MC_SERVER_CRASH_HHMMSS%"
 
-REM If more than specified seconds (from config variable), reset timer/counter.	
+REM If more than specified seconds (from config variable), reset timer/counter.
 IF %MC_SERVER_TMP_FLAG% GTR %MC_SERVER_CRASH_TIMER% (
 	ECHO Last crash/startup was %MC_SERVER_TMP_FLAG%+ seconds ago
 	ECHO INFO: Last crash/startup was %MC_SERVER_TMP_FLAG%+ seconds ago 1>>  "%~dp0logs\serverstart.log" 2>&1
@@ -930,7 +938,7 @@ CHOICE /M:"Restart now (Y) or Exit (N)" /T:30 /D:Y
 IF %ERRORLEVEL% GEQ 2 (
 	ECHO INFO: Server manually stopped before auto-restart 1>>  "%~dp0logs\serverstart.log" 2>&1
 	GOTO CLEANUP
-) ELSE ( 
+) ELSE (
 	GOTO BEGIN
 )
 
@@ -961,8 +969,8 @@ ECHO DEBUG: MC_SERVER_CRASH_YYYYMMDD=%MC_SERVER_CRASH_YYYYMMDD% 1>>  "%~dp0logs\
 ECHO DEBUG: MC_SERVER_CRASH_HHMMSS=%MC_SERVER_CRASH_HHMMSS% 1>>  "%~dp0logs\serverstart.log" 2>&1
 ECHO DEBUG: Current directory file listing: 1>>  "%~dp0logs\serverstart.log" 2>&1
 DIR 1>>  "%~dp0logs\serverstart.log" 2>&1
-ECHO DEBUG: JAVA version output (java -d64 -version): 1>>  "%~dp0logs\serverstart.log" 2>&1
-java -d64 -version 1>>  "%~dp0logs\serverstart.log" 2>&1
+ECHO DEBUG: JAVA version output ("%MC_SERVER_JAVA_PATH%\java" -d64 -version): 1>>  "%~dp0logs\serverstart.log" 2>&1
+"%MC_SERVER_JAVA_PATH%\java" -d64 -version 1>>  "%~dp0logs\serverstart.log" 2>&1
 
 REM Clear variables -- probably not necessary since we SETLOCAL but doesn't hurt either
 SET MC_SERVER_MAX_RAM=
